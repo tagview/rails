@@ -1253,7 +1253,17 @@ module ActiveRecord
 
             if association.nil? || force_reload
               association = association_proxy_class.new(self, reflection)
-              retval = force_reload ? reflection.klass.uncached { association.reload } : association.reload
+
+              # Bug fix polymorphic association reload
+              # https://github.com/rails/rails/issues/2386
+              # https://github.com/rails/rails/commit/b1bbf90dffbc412670286154d9c7749d4388806b
+              retval = if force_reload
+                         association_or_reflection_class = reflection.klass.respond_to?(:uncached) ? reflection.klass : association.class
+                         association_or_reflection_class.uncached { association.reload } if association_or_reflection_class
+                      else
+                         association.reload
+                      end
+
               if retval.nil? and association_proxy_class == BelongsToAssociation
                 association_instance_set(reflection.name, nil)
                 return nil
@@ -1307,7 +1317,13 @@ module ActiveRecord
               association_instance_set(reflection.name, association)
             end
 
-            reflection.klass.uncached { association.reload } if force_reload
+            # Bug fix polymorphic association reload
+            # https://github.com/rails/rails/issues/2386
+            # https://github.com/rails/rails/commit/b1bbf90dffbc412670286154d9c7749d4388806b
+            if force_reload
+              association_or_reflection_class = reflection.klass.respond_to?(:uncached) ? reflection.klass : association.class
+              association_or_reflection_class.uncached { association.reload } if association_or_reflection_class
+            end
 
             association
           end
