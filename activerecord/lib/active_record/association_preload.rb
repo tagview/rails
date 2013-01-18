@@ -282,11 +282,10 @@ module ActiveRecord
           end
           through_records.flatten!
         else
-          options = {}
-          options[:include] = reflection.options[:include] || reflection.options[:source] if reflection.options[:conditions] || reflection.options[:order]
-          options[:order] = reflection.options[:order]
-          options[:conditions] = reflection.options[:conditions]
-          records.first.class.preload_associations(records, through_association, options)
+          # Bug fix
+          # Reverting https://rails.lighthouseapp.com/projects/8994/tickets/2362-has-many-through-eager-loading-problem
+          # As it causes exception with has_many through
+          records.first.class.preload_associations(records, through_association)
           through_records = records.map {|record| record.send(through_association)}.flatten
         end
         through_records.compact!
